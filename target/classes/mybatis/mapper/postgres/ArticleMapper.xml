@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="user_ns">
+
+	<insert id="insert" parameterType="user">
+		INSERT INTO tb_user (id, user_name, real_name, login_name, password, type, telephone, phone, email, company, address, status, register_time, memo)
+		VALUES (NEXTVAL('tb_user_id_seq'), #{userName}, #{realName}, #{loginName}, #{password}, #{type}, #{telephone}, #{phone}, #{email}, #{company}, #{address}, #{status}, #{registerTime}, #{memo})
+		<selectKey resultType="long" order="AFTER" keyProperty="id">
+			SELECT CURRVAL('tb_user_id_seq') AS ID
+		</selectKey>
+	</insert>
+	
+	<select id="queryByLoginName" parameterType="string" resultType="user">
+		SELECT id, 
+			user_name as userName, 
+			real_name as realName,
+			login_name as loginName, 
+			password, type, telephone, phone, email, company, address, status, 
+			register_time as registerTime, 
+			memo 
+		from tb_user u where u.login_name = #{loginName}
+	</select>
+	
+	<select id="queryCount" parameterType="map" resultType="int">
+		select count(*) from tb_user where 1=1
+		<if test="id != null and id != ''">and id = #{id}</if>
+		<if test="type != null and type != ''">and type = #{type}</if>
+	</select>
+	
+	<select id="query" parameterType="map" resultType="map">
+		select * from tb_user
+		where 1=1
+		<if test="id != null and id != ''">and id = #{id}</if>
+		<if test="type != null and type != ''">and type = #{type}</if>
+		ORDER BY ID DESC
+		<if test="startRow != null and startRow != -1">
+			LIMIT ${count} offset ${startRow}
+		</if>
+	</select>
+	
+	<update id="updatePassword" parameterType="user">
+		update tb_user set 
+		<if test="password != null and password != ''">password = #{password}</if>
+		where login_name = #{loginName}
+	</update>
+
+	<select id="queryAll" resultType="user">
+		select id,
+			type,
+			name,
+			status
+		from user where 1=1
+	</select>
+	
+	<select id="queryById" parameterType="long" resultType="map">
+		select * from user where id = #{id}
+	</select>
+	
+	<delete id="deleteById" parameterType="long">
+		delete from user where id = #{id} 
+	</delete>
+
+</mapper>

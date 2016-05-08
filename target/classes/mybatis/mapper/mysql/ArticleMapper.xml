@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="article_ns">
+
+	<insert id="insert" parameterType="article" useGeneratedKeys="true" keyProperty="id">
+		INSERT INTO article (article_name, article_sorted, content)
+		VALUES (#{article_name}, #{article_sorted}, #{content})
+	</insert>
+	
+	<select id="queryCount" parameterType="map" resultType="int">
+		select count(*) from article 
+		where 1=1  
+	</select>
+	<select id="query" parameterType="map" resultType="map">
+		select * from article
+		where 1=1 
+		ORDER BY ID DESC
+		<if test="startRow != null and startRow != -1">
+			LIMIT ${count} offset ${startRow}
+		</if>
+	</select>
+	<select id="queryById" parameterType="long" resultType="map">
+		select * from article where id = #{id}
+	</select>
+</mapper>

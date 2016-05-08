@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans-3.0.xsd 
+		http://www.springframework.org/schema/tx 
+		http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+		http://www.springframework.org/schema/context
+    	http://www.springframework.org/schema/context/spring-context-3.0.xsd
+		http://www.springframework.org/schema/mvc
+    	http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd">
+	<bean id="propertyConfigurer"
+		class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<list>
+				<value>classpath*:**/jdbc.properties</value>
+			</list>
+		</property>
+	</bean>
+    <mvc:annotation-driven />
+	<!-- 用于持有ApplicationContext,可以使用SpringContextHolder.getBean('xxxx')的静态方法得到spring bean -->
+	<bean class="com.zjy.utils.SpringContextHolder" lazy-init="false" />
+
+	<!-- 自动扫描包，可以写多个 -->
+	<context:component-scan base-package="com.zjy"></context:component-scan>
+
+	<!-- 允许对静态资源文件的访问 -->
+	<mvc:default-servlet-handler />
+
+
+	<!-- 视图解释类 -->
+	<bean
+		class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/" />
+		<property name="suffix" value="" /><!--可为空,方便实现自已的依据扩展名来选择视图解释类的逻辑 -->
+		<property name="viewClass"
+			value="org.springframework.web.servlet.view.JstlView" />
+	</bean>
+
+	<!-- 集成数据库 -->
+	<bean id="ds" class="org.logicalcobwebs.proxool.ProxoolDataSource">
+		<property name="driver" value="${db.driver.class}"></property>
+		<property name="driverUrl" value="${db.jdbc.url}"></property>
+		<property name="user" value="${username}"></property>
+		<property name="password" value="${password}"></property>
+		<property name="minimumConnectionCount" value="${minIdle}"></property>
+		<property name="maximumConnectionCount" value="${maxIdle}"></property>
+	</bean>
+
+	<!-- Spring、MyBatis的整合，需要在 Spring 应用上下文中定义至少两样东西：一个SqlSessionFactory和至少一个数据映射器类。 -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="configLocation" value="classpath:mybatis/sqlMapConfig.xml" />
+		<property name="dataSource" ref="ds" />
+		<property name="mapperLocations" value="classpath:/mybatis/mapper/**/${db.type}/*.xml" />
+	</bean>
+
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg index="0" ref="sqlSessionFactory" />
+	</bean>
+	
+	<bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+   		<property name="dataSource">
+     		<ref local="ds"/>
+   		</property>
+ 	</bean>
+
+	<!-- 配置事务管理器 -->
+	<bean id="myTransactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="ds" />
+	</bean>
+	
+	<!-- 基于@Transactional的事务管理 -->
+	<tx:annotation-driven transaction-manager="myTransactionManager"/>
+
+	<!-- 配置事务拦截器 -->
+	<bean id="transactionInterceptor"
+		class="org.springframework.transaction.interceptor.TransactionInterceptor">
+		<!-- 事务拦截器bean需要依赖注入一个事务管理器 -->
+		<property name="transactionManager" ref="myTransactionManager" />
+		<property name="transactionAttributes">
+			<!-- 下面定义事务传播属性 -->
+			<props>
+				<prop key="add*">PROPAGATION_REQUIRED</prop>
+				<prop key="save*">PROPAGATION_REQUIRED</prop>
+				<prop key="update*">PROPAGATION_REQUIRED</prop>
+				<prop key="delete*">PROPAGATION_REQUIRED</prop>
+			</props>
+		</property>
+	</bean>
+	
+	<bean class="org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator">
+        <!--指定对满足哪些bean name的bean自动生成业务代理 -->
+ 		<property name="beanNames">
+        <!--   下面是所有需要自动创建事务代理的bean-->
+            <list>
+                <value>*ServiceImpl</value>
+                <value>*Service</value>
+                <value>*DaoImpl</value>
+                <value>*Dao</value>
+            </list>
+        <!--   此处可增加其他需要自动创建事务代理的bean-->
+        </property>
+        <!--   下面定义BeanNameAutoProxyCreator所需的事务拦截器-->
+        <property name="interceptorNames">
+            <list>
+                <value>transactionInterceptor</value> 
+            </list>
+        </property>
+    </bean>
+ 	<!-- aop配置 -->
+	<bean class="org.springframework.aop.aspectj.annotation.AnnotationAwareAspectJAutoProxyCreator" />
+	
+	<!-- 单元测试注入的bean -->
+	<bean class="org.springframework.web.servlet.mvc.annotation.DefaultAnnotationHandlerMapping">
+		<property name="order" value="0" />
+	</bean>
+	<!--<bean class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter">
+		 全局web binder 
+		<property name="webBindingInitializer">
+			<bean class="com.xkq.sys.bind.DateFormatBindingInitializer" />
+		</property>
+	</bean>-->
+	<bean class="org.springframework.web.servlet.mvc.SimpleControllerHandlerAdapter" />
+	<bean class="org.springframework.web.servlet.mvc.HttpRequestHandlerAdapter" />
+
+	<!-- 国际化配置
+	<bean id="messageSource"
+		class="org.springframework.context.support.ResourceBundleMessageSource">
+		<property name="basenames">
+			<list>
+				<value>properties/i18n/smsp</value>
+				<value>properties/i18n/setting</value>
+			</list>
+		</property>
+	</bean>
+	 -->
+	<bean id="localeResolver"
+		class="org.springframework.web.servlet.i18n.SessionLocaleResolver">
+		<property name="defaultLocale" value="zh_CN" />
+	</bean>
+	
+	<!-- 拦截器 -->
+	<!-- <mvc:interceptors>
+		<bean class="com.xkq.plat.interceptor.LoginSessionInterceptor" />
+	</mvc:interceptors> -->
+	
+	
+</beans>
